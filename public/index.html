@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Attendance & GPS Tracking System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-school me-2"></i>Smart School System
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card dashboard-card stats-card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-user-check me-2"></i>Attendance System
+                        </h5>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h2 id="totalStudents">0</h2>
+                                <p class="text-muted">Total Students</p>
+                            </div>
+                            <div>
+                                <h2 id="presentToday">0</h2>
+                                <p class="text-muted">Present Today</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                            <i class="fas fa-qrcode me-2"></i>Scan RFID
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card dashboard-card stats-card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-map-marker-alt me-2"></i>GPS Tracking
+                        </h5>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h2 id="totalDevices">0</h2>
+                                <p class="text-muted">Total Devices</p>
+                            </div>
+                            <div>
+                                <h2 id="activeDevices">0</h2>
+                                <p class="text-muted">Active Now</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#trackingModal">
+                            <i class="fas fa-map me-2"></i>View Map
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card dashboard-card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-history me-2"></i>Recent Attendance
+                        </h5>
+                        <div class="realtime-updates" id="attendanceUpdates">
+                            <p class="text-center text-muted">No recent attendance records</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card dashboard-card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-satellite me-2"></i>GPS Updates
+                        </h5>
+                        <div class="realtime-updates" id="gpsUpdates">
+                            <p class="text-center text-muted">No recent GPS updates</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="attendanceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">RFID Attendance Scanner</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <i class="fas fa-rfid fa-5x text-primary mb-3"></i>
+                        <p>Ready to scan RFID tags. Place the card near the reader.</p>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
