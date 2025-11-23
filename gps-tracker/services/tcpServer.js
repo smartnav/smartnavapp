@@ -18,7 +18,7 @@ class TCPServer {
           
           // Process Concox V5 protocol data
           const result = await processConcoxData(data, socket);
-          
+          console.log("result--------", result)
           if (result && result.imei) {
             // Update device connection status
             await updateDeviceConnection(result.imei, socket);

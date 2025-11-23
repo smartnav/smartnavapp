@@ -13,31 +13,41 @@ class DataProcessingService {
         return null;
       }
 
-      const packetType = data[2];
+      const protocolType = data[3]; // CORRECTED: Protocol type is at byte 3
       let result = null;
-
-      switch (packetType) {
+      console.log("protocolType", protocolType)
+      switch (protocolType) {
         case 0x01: // Login packet
           result = ConcoxV5Adapter.parseLoginPacket(data);
+          console.log("protocolType restul", result)
           if (result) {
-            await this.handleLogin(result, socket);
+            await DataProcessingService.handleLogin(result, socket);
           }
           break;
 
-        case 0x22: // Location packet
+        case 0x12: // Location packet - CORRECTED: 0x12 not 0x22
           result = ConcoxV5Adapter.parseLocationPacket(data);
           if (result) {
             await this.handleLocation(data, result, socket);
           }
           break;
 
-        case 0x13: // Heartbeat packet
-          result = { type: 'heartbeat' };
-          await this.handleHeartbeat(data, socket);
+        case 0x11: // Heartbeat packet - CORRECTED: 0x11 not 0x13
+          result = ConcoxV5Adapter.parseHeartbeatPacket(data); // ADD THIS
+          if (result) {
+            await this.handleHeartbeat(result, socket);
+          }
+          break;
+
+        case 0x13: // Status packet - 0x13 is actually status, not heartbeat
+          result = ConcoxV5Adapter.parseStatusPacket(data); // You might want to add this
+          if (result) {
+            await this.handleStatus(result, socket);
+          }
           break;
 
         default:
-          logger.warn('Unknown packet type received', { packetType });
+          logger.warn('Unknown packet type received', { protocolType });
           break;
       }
 
@@ -45,6 +55,57 @@ class DataProcessingService {
     } catch (error) {
       logger.error('Error processing Concox data', { error: error.message });
       return null;
+    }
+  }
+
+  // ... keep your existing handleLogin and handleLocation methods ...
+  
+
+  static async handleHeartbeat(heartbeatData, socket) { // UPDATED METHOD
+    try {
+      // Update device last connection time
+      if (heartbeatData.imei) {
+        await Device.findOneAndUpdate(
+          { imei: heartbeatData.imei },
+          { 
+            lastConnection: new Date(),
+            status: 'online'
+          }
+        );
+        logger.debug('Heartbeat received', { imei: heartbeatData.imei });
+      }
+
+      // Send heartbeat response
+      const response = ConcoxV5Adapter.createHeartbeatResponse(); // UPDATE THIS
+      socket.write(response);
+      
+      logger.debug('Heartbeat response sent');
+    } catch (error) {
+      logger.error('Error handling heartbeat', { error: error.message });
+    }
+  }
+
+  // ADD THIS NEW METHOD FOR STATUS PACKETS
+  static async handleStatus(statusData, socket) {
+    try {
+      if (statusData.imei) {
+        await Device.findOneAndUpdate(
+          { imei: statusData.imei },
+          { 
+            lastConnection: new Date(),
+            status: 'online',
+            batteryLevel: statusData.batteryLevel,
+            // ... other status fields ...
+          }
+        );
+      }
+      
+      const response = ConcoxV5Adapter.createStatusResponse();
+      socket.write(response);
+      
+      logger.debug('Status packet handled', { imei: statusData.imei });
+    } catch (error) {
+      logger.error('Error handling status', { error: error.message });
     }
   }
 
@@ -59,135 +120,39 @@ class DataProcessingService {
           imei: loginData.imei,
           deviceName: `Device-${loginData.imei}`,
           vehicleNumber: `VH-${loginData.imei.slice(-6)}`,
-          protocolVersion: 'V5'
+          protocolVersion: 'Concox V5',
+          status: 'online',
+          firstSeen: new Date(),
+          lastConnection: new Date(),
+          isActive: true
         });
         await device.save();
         logger.info('New device registered', { imei: loginData.imei });
+      } else {
+        // Update existing device
+        device.lastConnection = new Date();
+        device.status = 'online';
+        device.isActive = true;
+        await device.save();
       }
 
-      // Update last connection
-      device.lastConnection = new Date();
-      await device.save();
-
-      // Send login response
-      const response = ConcoxV5Adapter.createResponse(0x01, '0001', [0x00]);
+      // Send login response (78 78 05 01 00 01 D9 DC 0D 0A)
+      const response = ConcoxV5Adapter.createLoginResponse(loginData.imei);
       socket.write(response);
 
-      logger.info('Login successful', { imei: loginData.imei });
-    } catch (error) {
-      logger.error('Error handling login', { error: error.message });
-    }
-  }
-
-  // Update the handleLocation method to use Astra DB
-  static async handleLocation(rawData, locationData, socket) {
-    try {
-      const device = await Device.findOne({ imei: locationData.imei });
-      if (!device) {
-        logger.warn('Device not found for location data', { imei: locationData.imei });
-        return;
-      }
-
-      // Save to MongoDB (unchanged)
-      const location = new Location({
-        device: device._id,
-        imei: device.imei,
-        timestamp: locationData.timestamp,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        speed: locationData.speed,
-        heading: locationData.heading,
-        satellites: locationData.satellites,
-        ignition: locationData.ignition,
-        mileage: locationData.mileage,
-        data: rawData.toString('hex')
-      });
-      await location.save();
-
-      // Update device last location (unchanged)
-      device.lastLocation = {
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        timestamp: locationData.timestamp,
-        speed: locationData.speed,
-        heading: locationData.heading
-      };
-      device.lastConnection = new Date();
-      await device.save();
-
-      // Save to Astra DB (updated)
-      await this.saveToAstraDB(device.imei, locationData);
-
-      // Emit real-time update (unchanged)
-      const io = require('../../server').io;
-      io.to('gps-updates').emit('gps-update', {
-        device_imei: device.imei,
-        timestamp: locationData.timestamp,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        speed: locationData.speed,
-        heading: locationData.heading,
-        vehicleNumber: device.vehicleNumber
+      logger.info('Login successful', { 
+        imei: loginData.imei,
+        deviceId: device._id 
       });
 
-      // Send acknowledgment (unchanged)
-      const response = ConcoxV5Adapter.createResponse(0x22, '0001', [0x00]);
-      socket.write(response);
-
-      logger.info('Location saved', { imei: device.imei });
-    } catch (error) {
-      logger.error('Error handling location', { error: error.message });
-    }
-  }
-
-  static async saveToAstraDB(imei, locationData) {
-    try {
-      // Save to realtime_data collection
-      const realtimeDoc = {
-        device_imei: imei,
-        timestamp: locationData.timestamp,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        speed: locationData.speed,
-        heading: locationData.heading,
-        altitude: locationData.altitude || 0,
-        satellites: locationData.satellites,
-        hdop: locationData.hdop || 0,
-        battery: locationData.battery || 0,
-        ignition: locationData.ignition || false,
-        $vector: [0] // Required field for Astra DB
-      };
-
-      await astraClient.insertLocation('realtime_data', realtimeDoc);
-
-      // Also save to daily history
-      const dateStr = locationData.timestamp.toISOString().split('T')[0];
-      const historyDoc = {
-        device_imei: imei,
-        date: dateStr,
-        timestamp: locationData.timestamp,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-        speed: locationData.speed,
-        heading: locationData.heading,
-        $vector: [0]
-      };
-
-      await astraClient.insertLocation('location_history', historyDoc);
+      return device;
 
     } catch (error) {
-      logger.error('Error saving to Astra DB:', { error: error.message });
-    }
-  }
-
-  static async handleHeartbeat(data, socket) {
-    try {
-      // Send heartbeat response
-      const response = ConcoxV5Adapter.createResponse(0x13, '0001', [0x00]);
-      socket.write(response);
-      logger.debug('Heartbeat received and responded');
-    } catch (error) {
-      logger.error('Error handling heartbeat', { error: error.message });
+      logger.error('Error handling login', { 
+        error: error.message,
+        imei: loginData.imei 
+      });
+      throw error;
     }
   }
 }

@@ -32,3 +32,64 @@ A comprehensive system that combines student attendance management with RFID tec
 2. Install dependencies:
    ```bash
    npm install
+
+
+
+## TREE STRUCTURE
+
+scanntrack
+├── .env
+├── .gitignore
+├── attendance-system
+│   ├── controllers
+│   │   ├── attendanceController.js
+│   │   ├── authController.js
+│   │   └── studentController.js
+│   ├── middleware
+│   │   └── auth.js
+│   ├── models
+│   │   ├── Attendance.js
+│   │   ├── Student.js
+│   │   └── User.js
+│   ├── routes
+│   │   ├── attendanceRoutes.js
+│   │   ├── authRoutes.js
+│   │   └── studentRoutes.js
+│   └── services
+│       └── rfidService.js
+├── gps-tracker
+│   ├── adapters
+│   │   └── concoxV5Adapter.js
+│   ├── models
+│   │   ├── cassandra
+│   │   │   └── realtimeData.js
+│   │   └── mongodb
+│   │       ├── Device.js
+│   │       └── Location.js
+│   ├── routes
+│   │   ├── deviceRoutes.js
+│   │   └── trackingRoutes.js
+│   ├── services
+│   │   ├── dataProcessing.js
+│   │   ├── deviceManager.js
+│   │   └── tcpServer.js
+│   └── utils
+│       ├── checksum.js
+│       ├── geoUtils.js
+│       └── protocolParser.js
+├── package-lock.json
+├── package.json
+├── public
+│   ├── css
+│   ├── index.html
+│   └── js
+├── README.md
+├── server.js
+└── shared
+    ├── config
+    │   ├── astra.js
+    │   └── db.js
+    ├── middleware
+    │   └── rateLimiter.js
+    └── utils
+        └── logger.js
